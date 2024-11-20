@@ -1,11 +1,12 @@
 services:
   surrealdb:
-    image: surrealdb/surrealdb:latest
+    image: surrealdb/surrealdb:v2.0.4
     ports:
       - '9000:9000'
     volumes:
       - surrealdb-data:/var/lib/surrealdb
-    command: start --log debug --user ${SURREALDB_USER} --pass ${SURREALDB_PASS} --bind 0.0.0.0:9000
+    command:
+      start --log debug --unauthenticated --user ${SURREALDB_USER} --pass ${SURREALDB_PASS} --bind 0.0.0.0:9000
       file:/var/lib/surrealdb/surrealdb.db
     environment:
       - SURREALDB_USER=${SURREALDB_USER}
