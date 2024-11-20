@@ -56,6 +56,7 @@
 	// END: Add Brand Form
 
 	// START: Brands Table
+
 	const columns: ColumnDef<Brand>[] = [
 		{
 			id: 'name',
