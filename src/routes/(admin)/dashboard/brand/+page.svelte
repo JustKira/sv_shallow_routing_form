@@ -16,19 +16,16 @@
 		renderSnippet
 	} from '$lib/components/ui/data-table/index';
 	import ScrollArea from '$lib/components/ui/scroll-area/scroll-area.svelte';
+	import { goto, preloadData, pushState } from '$app/navigation';
+	import Button from '$lib/components/ui/button/button.svelte';
+	import type { PageData } from './$types';
+	import BrandPage from './[brand_id]/+page.svelte';
+	import * as Sheet from '$lib/components/ui/sheet';
+	import { page } from '$app/stores';
 
 	// START: Load Data & Props
 
-	interface Props {
-		addBrandForm: SuperValidated<Infer<AddBrandSchema>>;
-		brands: Brand[];
-	}
-
-	let {
-		data
-	}: {
-		data: Props;
-	} = $props();
+	let { data }: { data: PageData } = $props();
 
 	// END: Load Data & Props
 
@@ -62,7 +59,7 @@
 	// START: Brands Table
 	const columns: ColumnDef<Brand>[] = [
 		{
-			accessorKey: 'name',
+			id: 'name',
 			header: 'Name',
 			cell: ({ row }) => {
 				const { name } = row.original;
@@ -70,11 +67,19 @@
 			}
 		},
 		{
-			accessorKey: 'total_laptops',
+			id: 'total_laptops',
 			header: 'Total Laptops',
 			cell: ({ row }) => {
 				const { total_laptops } = row.original;
 				return renderSnippet(brandTotalLaptopsTable, { total_laptops });
+			}
+		},
+		{
+			id: 'actions',
+			header: 'Actions',
+			cell: ({ row }) => {
+				const { id } = row.original;
+				return renderSnippet(brandActionsTable, { id });
 			}
 		}
 	];
@@ -87,7 +92,36 @@
 		getCoreRowModel: getCoreRowModel()
 	});
 
+	async function onBrandClick(e: MouseEvent & { currentTarget: HTMLAnchorElement }) {
+		if (e.metaKey || e.ctrlKey) return;
+
+		e.preventDefault();
+
+		const { href } = e.currentTarget;
+		const result = await preloadData(href);
+
+		if (result.type === 'loaded' && result.status === 200) {
+			pushState(href, { brand: result.data.brand });
+		} else {
+			goto(href);
+		}
+	}
+
 	// END: Brands Table
+
+	// START: Brand Page (SHALLOW ROUTING)
+
+	let brandPageOpen = $state(false);
+
+	$effect(() => {
+		if ($page.state.brand) {
+			brandPageOpen = true;
+			return;
+		}
+		brandPageOpen = false;
+	});
+
+	// END: Brand Page (SHALLOW ROUTING)
 </script>
 
 <!-- START: Brands Table UI -->
@@ -141,6 +175,10 @@
 	</div>
 {/snippet}
 
+{#snippet brandActionsTable({ id }: { id: string })}
+	<a href={`/dashboard/brand/${id.slice('brand:'.length)}`} onclick={onBrandClick}>View & Edit</a>
+{/snippet}
+
 <!-- END: Brands Table UI -->
 
 <!-- START: Add Brand Form UI -->
@@ -171,6 +209,27 @@
 {/snippet}
 
 <!-- END: Add Brand Form UI -->
+
+<!-- START: Selected Brand Sheet (SHALLOW ROUTING )-->
+
+<Sheet.Root
+	open={brandPageOpen}
+	onOpenChange={(open) => {
+		if (!open) {
+			history.back();
+		}
+	}}
+>
+	<Sheet.Content>
+		<BrandPage
+			data={{
+				brand: $page.state.brand
+			}}
+		/>
+	</Sheet.Content>
+</Sheet.Root>
+
+<!-- END: Selected Brand Sheet (SHALLOW ROUTING )-->
 
 <!-- START: Page UI -->
 
