@@ -3,6 +3,28 @@ import { message, superValidate } from 'sveltekit-superforms';
 import { zod } from 'sveltekit-superforms/adapters';
 import { addBrandSchema } from './schema';
 import { getDb } from '$lib/surrealdb/surreal';
+import { jsonify } from 'surrealdb';
+
+export const load = async () => {
+	const db = await getDb();
+
+	const addBrandForm = await superValidate(zod(addBrandSchema));
+
+	if (!db) {
+		return fail(500, {
+			message: 'Database connection failed'
+		});
+	}
+
+	const brands = await db.query<SurrealQuery<Brand[]>>(`SELECT * FROM brand`, {});
+
+	console.log(JSON.stringify(jsonify(brands[0]), null, '\t'));
+
+	return {
+		brands: jsonify(brands[0]),
+		addBrandForm
+	};
+};
 
 export const actions: Actions = {
 	'add-brand': async (event) => {
@@ -32,7 +54,7 @@ export const actions: Actions = {
 			});
 		}
 
-		await db.query(`CREATE ONLY brand:ulid() SET name=$name`, {
+		await db.query(`CREATE ONLY brand:ulid() SET name=$name, total_laptops=0`, {
 			...form.data
 		});
 

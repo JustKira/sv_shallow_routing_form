@@ -8,12 +8,35 @@
 	import { type SuperValidated, type Infer, superForm } from 'sveltekit-superforms';
 	import { zodClient } from 'sveltekit-superforms/adapters';
 	import { toast } from 'svelte-sonner';
+	import { getCoreRowModel, type ColumnDef } from '@tanstack/table-core';
+	import * as Table from '$lib/components/ui/table/index';
+	import {
+		createSvelteTable,
+		FlexRender,
+		renderSnippet
+	} from '$lib/components/ui/data-table/index';
+	import ScrollArea from '$lib/components/ui/scroll-area/scroll-area.svelte';
 
-	let { data }: { data: SuperValidated<Infer<AddBrandSchema>> } = $props();
+	// START: Load Data & Props
+
+	interface Props {
+		addBrandForm: SuperValidated<Infer<AddBrandSchema>>;
+		brands: Brand[];
+	}
+
+	let {
+		data
+	}: {
+		data: Props;
+	} = $props();
+
+	// END: Load Data & Props
+
+	// START: Add Brand Form
 
 	let addBrandFormDialogOpen = $state(false);
 
-	const form = superForm(data, {
+	const form = superForm(data.addBrandForm, {
 		validators: zodClient(addBrandSchema),
 		delayMs: 500,
 		timeoutMs: 2000,
@@ -21,6 +44,7 @@
 			if (event.result.type === 'success') {
 				toast.success(event.form.message);
 				addBrandFormDialogOpen = false;
+
 				return;
 			}
 
@@ -32,7 +56,94 @@
 	});
 
 	const { form: formData, enhance, timeout, delayed } = form;
+
+	// END: Add Brand Form
+
+	// START: Brands Table
+	const columns: ColumnDef<Brand>[] = [
+		{
+			accessorKey: 'name',
+			header: 'Name',
+			cell: ({ row }) => {
+				const { name } = row.original;
+				return renderSnippet(brandNameTable, { name });
+			}
+		},
+		{
+			accessorKey: 'total_laptops',
+			header: 'Total Laptops',
+			cell: ({ row }) => {
+				const { total_laptops } = row.original;
+				return renderSnippet(brandTotalLaptopsTable, { total_laptops });
+			}
+		}
+	];
+
+	const table = createSvelteTable({
+		get data() {
+			return data.brands;
+		},
+		columns,
+		getCoreRowModel: getCoreRowModel()
+	});
+
+	// END: Brands Table
 </script>
+
+<!-- START: Brands Table UI -->
+{#snippet brandsTable()}
+	<Table.Root>
+		<Table.Header>
+			{#each table.getHeaderGroups() as headerGroup (headerGroup.id)}
+				<Table.Row>
+					{#each headerGroup.headers as header (header.id)}
+						<Table.Head>
+							{#if !header.isPlaceholder}
+								<FlexRender
+									content={header.column.columnDef.header}
+									context={header.getContext()}
+								/>
+							{/if}
+						</Table.Head>
+					{/each}
+				</Table.Row>
+			{/each}
+		</Table.Header>
+		<Table.Body>
+			{#each table.getRowModel().rows as row (row.id)}
+				<Table.Row data-state={row.getIsSelected() && 'selected'}>
+					{#each row.getVisibleCells() as cell (cell.id)}
+						<Table.Cell>
+							<FlexRender content={cell.column.columnDef.cell} context={cell.getContext()} />
+						</Table.Cell>
+					{/each}
+				</Table.Row>
+			{:else}
+				<Table.Row>
+					<Table.Cell colspan={columns.length} class="h-24 text-center">No results.</Table.Cell>
+				</Table.Row>
+			{/each}
+		</Table.Body>
+	</Table.Root>
+{/snippet}
+
+{#snippet brandNameTable({ name }: { name: string })}
+	<h1 class="font-medium">
+		{name}
+	</h1>
+{/snippet}
+
+{#snippet brandTotalLaptopsTable({ total_laptops }: { total_laptops: number })}
+	<div class="flex gap-2">
+		<h1 class="font-medium">
+			{total_laptops}
+		</h1>
+	</div>
+{/snippet}
+
+<!-- END: Brands Table UI -->
+
+<!-- START: Add Brand Form UI -->
 
 {#snippet addBrandFrom()}
 	<form method="POST" action="?/add-brand" use:enhance>
@@ -48,12 +159,10 @@
 		</Form.Field>
 
 		{#if $delayed}
-			<!-- TODO add Better Loading  -->
+			<!-- TODO: add Better Loading  -->
 			Processing...
-		{/if}
-
-		{#if $timeout}
-			<!-- TODO add Better Loading  -->
+		{:else if $timeout}
+			<!-- TODO: add Better Loading  -->
 			Loading...
 		{/if}
 
@@ -61,10 +170,12 @@
 	</form>
 {/snippet}
 
-<main class="min-h-screen w-full">
-	<section
-		class="sticky top-0 flex w-full flex-col justify-between border-b border-sidebar-border px-4 py-2"
-	>
+<!-- END: Add Brand Form UI -->
+
+<!-- START: Page UI -->
+
+<main class="flex max-h-screen w-full flex-col gap-2 pb-2">
+	<section class="flex w-full flex-col justify-between border-b border-sidebar-border px-4 py-2">
 		<div class="flex w-fit flex-col items-start gap-1">
 			<h1 class="text-xl font-medium">Brands</h1>
 
@@ -94,4 +205,19 @@
 			</Dialog.Root>
 		</div>
 	</section>
+
+	<section class="mx-2 flex flex-col gap-2">
+		<h1 class="text-lg font-medium">Brands</h1>
+		<div>
+			<h1>Search</h1>
+			<Input disabled placeholder="( TODO: SUPPORT SEARCHING )" class="max-w-72 bg-sidebar" />
+		</div>
+	</section>
+
+	<ScrollArea class="mx-2 h-full rounded-md border">
+		<!-- TODO: Make Table header Sticky with scrolling  -->
+		{@render brandsTable()}
+	</ScrollArea>
 </main>
+
+<!-- END: Page UI -->
