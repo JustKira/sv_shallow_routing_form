@@ -25,6 +25,7 @@
 		</Sidebar.Content>
 		<Sidebar.Footer />
 	</Sidebar.Root>
-
-	{@render children()}
+	<main class="flex max-h-screen w-full flex-col gap-2 pb-2">
+		{@render children()}
+	</main>
 </Sidebar.Provider>

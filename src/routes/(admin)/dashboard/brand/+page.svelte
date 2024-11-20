@@ -4,12 +4,12 @@
 	import { cn } from '$lib/utils';
 	import * as Form from '$lib/components/ui/form';
 	import { Input } from '$lib/components/ui/input';
-	import { addBrandSchema, type AddBrandSchema } from './schema';
-	import { type SuperValidated, type Infer, superForm } from 'sveltekit-superforms';
-	import { zodClient } from 'sveltekit-superforms/adapters';
-	import { toast } from 'svelte-sonner';
-	import { getCoreRowModel, type ColumnDef } from '@tanstack/table-core';
+	import { superForm } from 'sveltekit-superforms';
 	import * as Table from '$lib/components/ui/table/index';
+	import { toast } from 'svelte-sonner';
+	import { zodClient } from 'sveltekit-superforms/adapters';
+	import { addBrandSchema, type AddBrandSchema } from './schema';
+	import { getCoreRowModel, type ColumnDef } from '@tanstack/table-core';
 	import {
 		createSvelteTable,
 		FlexRender,
@@ -17,11 +17,10 @@
 	} from '$lib/components/ui/data-table/index';
 	import ScrollArea from '$lib/components/ui/scroll-area/scroll-area.svelte';
 	import { goto, preloadData, pushState } from '$app/navigation';
-	import Button from '$lib/components/ui/button/button.svelte';
 	import type { PageData } from './$types';
 	import BrandPage from './[brand_id]/+page.svelte';
-	import * as Sheet from '$lib/components/ui/sheet';
 	import { page } from '$app/stores';
+	import * as Sheet from '$lib/components/ui/sheet';
 
 	// START: Load Data & Props
 
@@ -101,7 +100,7 @@
 		const result = await preloadData(href);
 
 		if (result.type === 'loaded' && result.status === 200) {
-			pushState(href, { brand: result.data.brand });
+			pushState(href, { brand: result.data.brand, updateBrandForm: result.data.updateBrandForm });
 		} else {
 			goto(href);
 		}
@@ -176,7 +175,11 @@
 {/snippet}
 
 {#snippet brandActionsTable({ id }: { id: string })}
-	<a href={`/dashboard/brand/${id.slice('brand:'.length)}`} onclick={onBrandClick}>View & Edit</a>
+	<a
+		class={buttonVariants({ variant: 'link', size: 'sm' })}
+		onclick={onBrandClick}
+		href={`/dashboard/brand/${id.slice('brand:'.length)}`}>View & Edit</a
+	>
 {/snippet}
 
 <!-- END: Brands Table UI -->
@@ -210,73 +213,82 @@
 
 <!-- END: Add Brand Form UI -->
 
-<!-- START: Selected Brand Sheet (SHALLOW ROUTING )-->
+<!-- START: Brand Page (SHALLOW ROUTING)-->
 
 <Sheet.Root
 	open={brandPageOpen}
+	controlledOpen
 	onOpenChange={(open) => {
-		if (!open) {
-			history.back();
-		}
+		brandPageOpen = open;
+
+		if (open) return;
+
+		console.log('onOpenChange: Closing');
+		history.back();
 	}}
 >
-	<Sheet.Content>
-		<BrandPage
-			data={{
-				brand: $page.state.brand
-			}}
-		/>
+	<Sheet.Content class="!max-w-[450px]">
+		{#if $page.state.brand}
+			<BrandPage
+				data={{
+					brand: $page.state.brand,
+					updateBrandForm: $page.state.updateBrandForm
+				}}
+			/>
+		{/if}
 	</Sheet.Content>
 </Sheet.Root>
 
-<!-- END: Selected Brand Sheet (SHALLOW ROUTING )-->
+<!-- END: Brand Page (SHALLOW ROUTING)-->
 
 <!-- START: Page UI -->
 
-<main class="flex max-h-screen w-full flex-col gap-2 pb-2">
-	<section class="flex w-full flex-col justify-between border-b border-sidebar-border px-4 py-2">
-		<div class="flex w-fit flex-col items-start gap-1">
-			<h1 class="text-xl font-medium">Brands</h1>
+<section class="flex w-full flex-col justify-between border-b border-sidebar-border px-4 py-2">
+	<div class="flex w-fit flex-col items-start gap-1">
+		<h1 class="font-medium text-green-400 data-[open=false]:text-red-400" data-open={brandPageOpen}>
+			<span class="mx-2 text-muted-foreground"> BrandPageOpen Value </span>
+			{brandPageOpen}
+		</h1>
+		<h1 class="text-xl font-medium">Brands</h1>
 
-			<Dialog.Root
-				open={addBrandFormDialogOpen}
-				onOpenChange={(open) => (addBrandFormDialogOpen = open)}
-			>
-				<Dialog.Trigger class={cn(buttonVariants({ variant: 'default', size: 'sm' }), 'w-32')}>
-					Add Brand
-				</Dialog.Trigger>
-				<Dialog.Content>
-					<Dialog.Header>
-						<Dialog.Title>Add Brand</Dialog.Title>
-					</Dialog.Header>
+		<Dialog.Root
+			open={addBrandFormDialogOpen}
+			onOpenChange={(open) => (addBrandFormDialogOpen = open)}
+		>
+			<Dialog.Trigger class={cn(buttonVariants({ variant: 'default', size: 'sm' }), 'w-32')}>
+				Add Brand
+			</Dialog.Trigger>
+			<Dialog.Content>
+				<Dialog.Header>
+					<Dialog.Title>Add Brand</Dialog.Title>
+				</Dialog.Header>
 
-					{@render addBrandFrom()}
+				{@render addBrandFrom()}
 
-					<Dialog.Close>
-						<Dialog.Trigger
-							disabled={$timeout}
-							class={cn(buttonVariants({ variant: 'secondary', size: 'sm' }), 'w-full')}
-						>
-							Cancel
-						</Dialog.Trigger>
-					</Dialog.Close>
-				</Dialog.Content>
-			</Dialog.Root>
-		</div>
-	</section>
+				<Dialog.Close>
+					<Dialog.Trigger
+						disabled={$timeout}
+						class={cn(buttonVariants({ variant: 'secondary', size: 'sm' }), 'w-full')}
+					>
+						Cancel
+					</Dialog.Trigger>
+				</Dialog.Close>
+			</Dialog.Content>
+		</Dialog.Root>
+	</div>
+</section>
 
-	<section class="mx-2 flex flex-col gap-2">
-		<h1 class="text-lg font-medium">Brands</h1>
-		<div>
-			<h1>Search</h1>
-			<Input disabled placeholder="( TODO: SUPPORT SEARCHING )" class="max-w-72 bg-sidebar" />
-		</div>
-	</section>
+<section class="mx-2 flex flex-col gap-2">
+	<h1 class="text-lg font-medium">Brands</h1>
+	<div>
+		<h1>Search</h1>
+		<Input disabled placeholder="( TODO: SUPPORT SEARCHING )" class="max-w-72 bg-sidebar" />
+	</div>
+</section>
 
-	<ScrollArea class="mx-2 h-full rounded-md border">
-		<!-- TODO: Make Table header Sticky with scrolling  -->
-		{@render brandsTable()}
-	</ScrollArea>
-</main>
+<ScrollArea class="mx-2 h-full rounded-md border">
+	<!-- TODO: Make Table header Sticky with scrolling  -->
+	{@render brandsTable()}
+</ScrollArea>
 
 <!-- END: Page UI -->

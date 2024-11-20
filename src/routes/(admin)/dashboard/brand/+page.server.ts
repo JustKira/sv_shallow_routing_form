@@ -1,10 +1,10 @@
+import { getDb } from '$lib/surrealdb/surreal';
 import { fail, type Actions } from '@sveltejs/kit';
+import { jsonify } from 'surrealdb';
 import { message, superValidate } from 'sveltekit-superforms';
 import { zod } from 'sveltekit-superforms/adapters';
-import { addBrandSchema } from './schema';
-import { getDb } from '$lib/surrealdb/surreal';
-import { jsonify } from 'surrealdb';
 import type { PageServerLoad } from './$types';
+import { addBrandSchema } from './schema';
 
 export const load: PageServerLoad = async () => {
 	const db = await getDb();
@@ -19,8 +19,6 @@ export const load: PageServerLoad = async () => {
 	}
 
 	const brands = await db.query<SurrealQuery<Brand[]>>(`SELECT * FROM brand`, {});
-
-	console.log(JSON.stringify(jsonify(brands[0]), null, '\t'));
 
 	return {
 		brands: jsonify(brands[0]),
